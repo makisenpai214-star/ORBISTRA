@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>ORBISTRA — Global Satellite Mapping</title>
+<link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icon.svg"><meta name="theme-color" content="#070d1a">
+<style>
+:root{--bg:#070d1a;--p:rgba(12,20,38,.82);--t:#e8f0ff;--m:#8fa6c4;--a:#5ee7ff;--a2:#6d5bff;--b:rgba(140,170,220,.18);--r:16px}
+[data-theme=light]{--bg:#eef3fb;--p:rgba(255,255,255,.86);--t:#0d1b33;--m:#51668a;--b:rgba(40,70,120,.16)}
+*{box-sizing:border-box;margin:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:var(--bg);color:var(--t);font:14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overflow:hidden}
+#map{position:fixed;inset:0}
+svg.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.card{background:var(--p);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid var(--b);border-radius:var(--r);box-shadow:0 8px 30px #0005}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+.fab{width:44px;height:44px;display:grid;place-items:center;border-radius:12px;transition:.2s}
+.fab:hover,.fab.on{background:linear-gradient(135deg,var(--a),var(--a2));color:#fff}
+#splash{position:fixed;inset:0;z-index:99;background:radial-gradient(circle at 50% 40%,#10224a,#050912 70%);display:grid;place-content:center;justify-items:center;gap:14px;transition:opacity .7s,visibility .7s}
+#splash.out{opacity:0;visibility:hidden}#splash svg{width:120px;animation:sp 2s ease-out both}
+#splash h1{letter-spacing:.5em;font-weight:300;font-size:26px;color:#fff;margin-right:-.5em;animation:fi 1.4s .3s both}#splash p{color:#8fa6c4;font-size:12px;letter-spacing:.3em;animation:fi 1.4s .6s both}
+@keyframes sp{from{opacity:0;transform:scale(.6) rotate(-30deg)}to{opacity:1;transform:none}}@keyframes fi{from{opacity:0;transform:translateY(8px)}}
+#top{position:fixed;top:calc(12px + env(safe-area-inset-top));left:12px;right:12px;display:flex;gap:8px;z-index:5;max-width:520px}
+#sf{flex:1;display:flex;align-items:center;gap:8px;padding:0 6px 0 14px;height:48px}
+#q{flex:1;background:none;border:0;outline:0;color:var(--t);font:inherit;min-width:0}
+#side{position:fixed;right:12px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:2px;padding:4px;z-index:5}
+#side hr{border:0;border-top:1px solid var(--b);margin:2px 6px}
+#comp span{display:block;transition:transform .2s}
+#hud{position:fixed;left:12px;bottom:calc(12px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:6px;z-index:4;font-size:12px;color:var(--t)}
+#hud .card{padding:6px 10px;border-radius:10px;width:max-content;font-variant-numeric:tabular-nums}
+#sc{height:5px;border:2px solid var(--t);border-top:0;display:inline-block;vertical-align:middle;margin-right:6px}
+#net{position:fixed;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));z-index:4;padding:6px 10px;font-size:12px;display:flex;gap:6px;align-items:center}
+#net b{width:8px;height:8px;border-radius:9px;background:#2ee59d}#net.off b{background:#ff5d6c}
+.sheet{position:fixed;z-index:20;background:var(--p);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border:1px solid var(--b);box-shadow:0 10px 40px #0007;padding:16px;overflow:auto;transition:.3s;
+ left:0;right:0;bottom:0;max-height:78vh;border-radius:22px 22px 0 0;transform:translateY(105%);padding-bottom:calc(16px + env(safe-area-inset-bottom))}
+.sheet.open{transform:none}
+@media(min-width:720px){.sheet{left:auto;right:76px;top:12px;bottom:12px;width:380px;max-height:none;border-radius:var(--r);transform:translateX(130%)}#info{left:12px!important;right:auto!important;width:360px;top:auto!important;bottom:70px!important;transform:translateY(130%)}#info.open{transform:none}}
+#info{bottom:70px;left:12px;right:12px;width:auto;max-height:50vh;border-radius:var(--r)}
+.sheet h2{font-size:17px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--b)}
+.row small{display:block;color:var(--m);font-size:11px}
+select,.btn{background:var(--b);color:var(--t);border:1px solid var(--b);border-radius:10px;padding:8px 12px;font:inherit}select option{color:#000}
+.btn.pri{background:linear-gradient(135deg,var(--a),var(--a2));color:#fff;border:0}
+.btn{display:inline-flex;gap:6px;align-items:center}
+.tg{width:44px;height:26px;border-radius:20px;background:var(--b);position:relative;flex:none;transition:.2s}.tg::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:.2s}
+.tg.on{background:linear-gradient(135deg,var(--a),var(--a2))}.tg.on::after{left:21px}
+.lay{display:grid;grid-template-columns:repeat(auto-fill,minmax(105px,1fr));gap:10px}
+.lay button{border:2px solid transparent;border-radius:12px;padding:12px 6px;background:var(--b);text-align:center}.lay button.on{border-color:var(--a)}
+.lay i{display:block;height:38px;border-radius:8px;margin-bottom:6px}
+#toast{position:fixed;left:50%;top:calc(72px + env(safe-area-inset-top));transform:translate(-50%,-20px);opacity:0;z-index:50;padding:10px 16px;transition:.3s;pointer-events:none;max-width:90vw;text-align:center}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+#gate{position:fixed;inset:0;z-index:30;display:none;place-items:center;padding:20px;background:var(--bg)}#gate .card{max-width:460px;padding:22px}
+#gate input{width:100%;margin:10px 0;padding:10px;border-radius:10px;border:1px solid var(--b);background:var(--b);color:var(--t);font:inherit}
+#gate p{color:var(--m);margin:6px 0}#gate ol{margin:8px 0 8px 18px;color:var(--m)}
+.sv{display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid var(--b)}
+</style></head><body>
+<div id="map"></div>
+<div id="splash"><svg viewBox="0 0 120 120"><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5ee7ff"/><stop offset="1" stop-color="#6d5bff"/></linearGradient></defs><circle cx="60" cy="60" r="28" fill="none" stroke="url(#lg)" stroke-width="5"/><path d="M32 60h56M60 32c-14 16-14 40 0 56M60 32c14 16 14 40 0 56" fill="none" stroke="url(#lg)" stroke-width="2.5" opacity=".7"/><ellipse cx="60" cy="60" rx="47" ry="16" transform="rotate(-28 60 60)" fill="none" stroke="#fff" stroke-width="2.5" opacity=".85"/><circle cx="96" cy="40" r="6" fill="#5ee7ff"/></svg><h1>ORBISTRA</h1><p>EXPLORE THE EARTH</p></div>
+
+<div id="top"><form id="sf" class="card"><svg class="i" data-i="search"></svg><input id="q" placeholder="Search places or coordinates (e.g. 27.98, 86.92)" autocomplete="off"><button type="button" class="fab" id="clr" data-i="x" hidden></button></form></div>
+<div id="side" class="card">
+ <button class="fab" id="zi" data-i="plus" aria-label="Zoom in"></button><button class="fab" id="zo" data-i="minus" aria-label="Zoom out"></button><hr>
+ <button class="fab" id="comp" aria-label="Reset north"><span><svg class="i" viewBox="0 0 24 24"><path d="M12 3l4 9H8z" fill="#ff5d6c" stroke="none"/><path d="M12 21l-4-9h8z" fill="currentColor" stroke="none" opacity=".6"/></svg></span></button>
+ <button class="fab" id="loc" data-i="locate" aria-label="My location"></button><button class="fab" id="ms" data-i="ruler" aria-label="Measure"></button><hr>
+ <button class="fab" id="ly" data-i="layers" aria-label="Layers"></button><button class="fab" id="up" data-i="refresh" aria-label="Update map"></button><button class="fab" id="fs" data-i="expand" aria-label="Fullscreen"></button><button class="fab" id="st" data-i="sliders" aria-label="Settings"></button>
+</div>
+<div id="hud"><div class="card" id="co">—</div><div class="card"><span id="sc"></span><span id="sct"></span> · Zoom <b id="zl">3</b></div></div>
+<div id="net" class="card"><b></b><span>Online</span></div>
+<div id="toast" class="card"></div>
+
+<div id="info" class="sheet"><h2><span id="it">Place</span><button class="fab" id="ix" data-i="x"></button></h2><p id="ia" style="color:var(--m)"></p><p id="ic" style="margin:6px 0 12px;font-variant-numeric:tabular-nums"></p><div id="ir" style="margin-bottom:10px"></div>
+ <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="isv"><svg class="i" data-i="star"></svg>Save</button><button class="btn" id="ish"><svg class="i" data-i="share"></svg>Share</button><button class="btn pri" id="idr">Directions</button></div></div>
+
+<div id="lp" class="sheet"><h2>Map layers<button class="fab" data-close data-i="x"></button></h2><div class="lay" id="lg"></div></div>
+
+<div id="sp" class="sheet"><h2>Settings<button class="fab" data-close data-i="x"></button></h2>
+ <div class="row"><div>Map type</div><select id="s_type"><option value="hybrid">Hybrid</option><option value="satellite">Satellite</option><option value="roadmap">Standard</option><option value="terrain">Terrain</option></select></div>
+ <div class="row"><div>Map labels<small>Off switches Hybrid to pure Satellite</small></div><div class="tg" id="s_labels"></div></div>
+ <div class="row"><div>Roads<small>Standard &amp; Terrain only (Google styling limit)</small></div><div class="tg" id="s_roads"></div></div>
+ <div class="row"><div>3D buildings / tilt<small>Where Google has 45° imagery (zoom 17+)</small></div><div class="tg" id="s_tilt"></div></div>
+ <div class="row"><div>Language<small>Reloads the map</small></div><select id="s_lang"><option value="en">English</option><option value="es">Español</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="pt">Português</option><option value="ru">Русский</option><option value="ar">العربية</option><option value="tr">Türkçe</option><option value="zh-CN">中文</option><option value="ja">日本語</option></select></div>
+ <div class="row"><div>Distance units</div><select id="s_units"><option value="km">Kilometers</option><option value="mi">Miles</option></select></div>
+ <div class="row"><div>Theme</div><select id="s_theme"><option value="dark">Dark</option><option value="light">Light</option></select></div>
+ <div class="row"><div>Map update<small id="ust">Never refreshed</small></div><button class="btn pri" id="ub">Update map</button></div>
+ <div class="row"><div>Offline maps<small>Google imagery can't be saved offline</small></div><button class="btn" id="ob">Download region</button></div>
+ <div class="row"><div>Location permission<small id="lps">Unknown</small></div><button class="btn" id="lb">Request</button></div>
+ <div class="row"><div>Privacy<small>All data stays on this device</small></div><button class="btn" id="pb">Clear data</button></div>
+ <h2 style="margin-top:16px">Saved places</h2><div id="sl"></div>
+ <h2 style="margin-top:16px">About</h2><p style="color:var(--m)">ORBISTRA v1.0 — map data &amp; imagery © Google. Search, directions and tiles use the Google Maps Platform under your own API key. No imagery is copied or cached.</p></div>
+
+<div id="gate"><div class="card"><h2 id="gt">Connect Google Maps</h2><p id="gm">ORBISTRA needs your own Google Maps Platform API key. It is stored only in this browser.</p>
+<ol><li>Create a project at console.cloud.google.com and enable billing.</li><li>Enable <b>Maps JavaScript API</b>, <b>Geocoding API</b>, <b>Directions API</b>.</li><li>Create an API key and restrict it to your website domain (HTTP referrers).</li></ol>
+<input id="kin" placeholder="Paste API key" autocomplete="off"><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn pri" id="kgo">Connect</button><button class="btn" id="kof">View saved data</button></div></div></div>
+
+<script>
+const $=s=>document.querySelector(s),L=(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch{return d}};
+const IC={plus:'M12 5v14M5 12h14',minus:'M5 12h14',locate:'M12 8a4 4 0 100 8 4 4 0 000-8zM12 2v3M12 19v3M2 12h3M19 12h3',layers:'M12 3l9 5-9 5-9-5zM3 13l9 5 9-5',sliders:'M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0M14 4v4M8 10v4M16 16v4',refresh:'M20 11a8 8 0 10-2 6M20 4v7h-7',expand:'M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5',ruler:'M3 17L17 3l4 4L7 21zM8 12l2 2M11 9l2 2M14 6l2 2',star:'M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z',share:'M12 15V3M7 8l5-5 5 5M5 13v7h14v-7',search:'M11 4a7 7 0 100 14 7 7 0 000-14zM21 21l-5-5',x:'M6 6l12 12M18 6L6 18'};
+document.querySelectorAll('[data-i]').forEach(e=>{const s=`<svg class="i" viewBox="0 0 24 24"><path d="${IC[e.dataset.i]}"/></svg>`;e.tagName=='svg'?e.outerHTML=s:e.innerHTML=s});
+const S=Object.assign({type:'hybrid',labels:true,roads:true,tilt:true,lang:'en',units:'km',theme:'dark',updated:0},L('orb.s',{}));
+const sv=()=>localStorage.setItem('orb.s',JSON.stringify(S));
+let map,mk,geo,me,dirR,meas=false,mpts=[],mline,mlab,sel,places=L('orb.p',[]);
+const KEY=window.ORBISTRA_KEY||localStorage.getItem('orb.key');
+const toast=(t,ms=3200)=>{const e=$('#toast');e.textContent=t;e.classList.add('show');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('show'),ms)};
+const fd=m=>S.units=='km'?(m<1000?Math.round(m)+' m':(m/1000).toFixed(m<1e4?2:1)+' km'):(m<1609.34?Math.round(m*3.281)+' ft':(m/1609.34).toFixed(m<16093?2:1)+' mi');
+const open=id=>{document.querySelectorAll('.sheet').forEach(s=>s!==$(id)&&s.classList.remove('open'));$(id).classList.toggle('open')};
+document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>b.closest('.sheet').classList.remove('open'));
+$('#ly').onclick=()=>open('#lp');$('#st').onclick=()=>open('#sp');$('#ix').onclick=()=>{$('#info').classList.remove('open');mk&&mk.setMap(null)};
+
+// ---- theme / net
+function theme(){document.documentElement.dataset.theme=S.theme;$('#s_theme').value=S.theme}
+function net(){const o=!navigator.onLine;$('#net').classList.toggle('off',o);$('#net span').textContent=o?'Offline':'Online';if(o)toast('You are offline. Live maps, search and directions need a connection.')}
+addEventListener('online',()=>{net();toast('Back online');if(!map)boot()});addEventListener('offline',net);
+
+// ---- splash
+theme();net();setTimeout(()=>{$('#splash').classList.add('out');boot()},2000);
+if('serviceWorker' in navigator&&location.protocol!='file:')navigator.serviceWorker.register('sw.js').catch(()=>{});
+
+// ---- boot
+function gate(msg,show=true){$('#gate').style.display=show?'grid':'none';if(msg)$('#gm').textContent=msg}
+function boot(){
+ if(map||window.google?.maps)return;
+ if(!navigator.onLine){gate('You are offline. The live map needs a connection. You can still view saved places and preferences.');return}
+ if(!KEY){gate();return}
+ window.gm_authFailure=()=>{gate('Google rejected this API key. Check that Maps JavaScript API is enabled, billing is on, and the key allows this domain.')};
+ const s=document.createElement('script');s.src=`https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(KEY)}&libraries=geometry&language=${S.lang}&v=weekly&callback=initMap`;
+ s.onerror=()=>gate('Could not load Google Maps. Check your connection and API key.');document.head.appendChild(s)}
+$('#kgo').onclick=()=>{const k=$('#kin').value.trim();if(!k)return;localStorage.setItem('orb.key',k);location.reload()};
+$('#kof').onclick=()=>{gate(null,false);open('#sp')};
+
+const DARK=[{elementType:'geometry',stylers:[{color:'#0f1a2b'}]},{elementType:'labels.text.fill',stylers:[{color:'#8fa6c4'}]},{elementType:'labels.text.stroke',stylers:[{color:'#0a1220'}]},{featureType:'water',elementType:'geometry',stylers:[{color:'#06101e'}]},{featureType:'road',elementType:'geometry',stylers:[{color:'#223552'}]}];
+function apply(){if(!map)return;
+ const st=(S.theme=='dark'?[...DARK]:[]);if(!S.labels)st.push({elementType:'labels',stylers:[{visibility:'off'}]});if(!S.roads)st.push({featureType:'road',stylers:[{visibility:'off'}]});
+ const t=(S.type=='hybrid'&&!S.labels)?'satellite':S.type;map.setOptions({mapTypeId:t,styles:st});map.setTilt(S.tilt?45:0);
+ $('#s_type').value=S.type;['labels','roads','tilt'].forEach(k=>$('#s_'+k).classList.toggle('on',S[k]));$('#s_lang').value=S.lang;$('#s_units').value=S.units;
+ document.querySelectorAll('#lg button').forEach(b=>b.classList.toggle('on',b.dataset.t==S.type));scale()}
+
+window.initMap=()=>{
+ gate(null,false);const g=google.maps;let c={lat:20,lng:0},z=3;const h=location.hash.match(/^#(-?[\d.]+),(-?[\d.]+),(\d+)/);if(h)c={lat:+h[1],lng:+h[2]},z=+h[3];
+ map=new g.Map($('#map'),{center:c,zoom:z,minZoom:2,disableDefaultUI:true,gestureHandling:'greedy',backgroundColor:'#050912',isFractionalZoomEnabled:true,clickableIcons:true});geo=new g.Geocoder();
+ apply();
+ map.addListener('zoom_changed',scale);map.addListener('center_changed',()=>{const p=map.getCenter();$('#co').textContent=cs(p)});
+ map.addListener('mousemove',e=>$('#co').textContent=cs(e.latLng));
+ map.addListener('heading_changed',()=>$('#comp span').style.transform=`rotate(${-(map.getHeading()||0)}deg)`);
+ map.addListener('click',e=>{if(e.stop)e.stop();meas?measure(e.latLng):pick(e.latLng)});scale();
+ if(h)pick(new g.LatLng(c.lat,c.lng))};
+const cs=p=>p.lat().toFixed(5)+'°, '+p.lng().toFixed(5)+'°';
+function scale(){if(!map)return;const z=map.getZoom();$('#zl').textContent=z.toFixed(1);const m=156543.03*Math.cos(map.getCenter().lat()*Math.PI/180)/2**z*90;
+ let u=S.units=='km'?(m>=1000?[m/1000,'km',1000]:[m,'m',1]):(m>=1609?[m/1609.34,'mi',1609.34]:[m*3.281,'ft',.3048]);
+ const p=10**Math.floor(Math.log10(u[0])),n=[5,2,1].map(x=>x*p).find(x=>x<=u[0]);$('#sc').style.width=(n*u[2]/(m/90))+'px';$('#sct').textContent=n+' '+u[1]}
+
+// ---- zoom, compass, location, fullscreen
+$('#zi').onclick=()=>map&&map.setZoom(Math.round(map.getZoom())+1);$('#zo').onclick=()=>map&&map.setZoom(Math.round(map.getZoom())-1);
+$('#comp').onclick=()=>{if(!map)return;map.setHeading(0);map.setTilt(0);setTimeout(()=>map.setTilt(S.tilt?45:0),400)};
+function locate(cb){if(!navigator.geolocation)return toast('Geolocation is not supported here');navigator.geolocation.getCurrentPosition(p=>{const l={lat:p.coords.latitude,lng:p.coords.longitude};
+ if(map){me?me.setPosition(l):me=new google.maps.Marker({map,position:l,title:'You are here',icon:{path:google.maps.SymbolPath.CIRCLE,scale:8,fillColor:'#5ee7ff',fillOpacity:1,strokeColor:'#fff',strokeWeight:3}})}cb&&cb(l);permState()},e=>{toast(e.code==1?'Location permission denied. Enable it in browser settings.':'Could not get your location');permState()},{enableHighAccuracy:true,timeout:12000})}
+$('#loc').onclick=()=>{if(!map)return toast('Map not loaded');locate(l=>{map.panTo(l);map.setZoom(Math.max(map.getZoom(),16))})};
+$('#fs').onclick=()=>document.fullscreenElement?document.exitFullscreen():(document.documentElement.requestFullscreen?.()||toast('Fullscreen is not supported on this browser'));
+function permState(){navigator.permissions?.query({name:'geolocation'}).then(r=>$('#lps').textContent=r.state[0].toUpperCase()+r.state.slice(1)).catch(()=>{})}permState();$('#lb').onclick=()=>locate();
+
+// ---- layers
+[['hybrid','Hybrid','linear-gradient(135deg,#1d4d3a,#183a63)'],['satellite','Satellite','linear-gradient(135deg,#0f3d2e,#0a2748)'],['roadmap','Standard','linear-gradient(135deg,#dfe8f4,#a9c4e8)'],['terrain','Terrain','linear-gradient(135deg,#c9d8a8,#8fb08a)'],['3d','3D View','linear-gradient(135deg,#5ee7ff,#6d5bff)']].forEach(([t,n,bg])=>{const b=document.createElement('button');b.dataset.t=t;b.innerHTML=`<i style="background:${bg}"></i>${n}`;
+ b.onclick=()=>{if(!map)return toast('Map not loaded');if(t=='3d'){S.type='hybrid';S.tilt=true;sv();apply();map.setZoom(Math.max(map.getZoom(),18));map.setTilt(45);toast('3D works where Google has 45° imagery — try a major city.')}else{S.type=t;sv();apply()}};$('#lg').appendChild(b)});
+
+// ---- settings
+$('#s_type').onchange=e=>{S.type=e.target.value;sv();apply()};$('#s_units').onchange=e=>{S.units=e.target.value;sv();apply()};
+$('#s_theme').onchange=e=>{S.theme=e.target.value;sv();theme();apply()};$('#s_lang').onchange=e=>{S.lang=e.target.value;sv();location.reload()};
+['labels','roads','tilt'].forEach(k=>$('#s_'+k).onclick=()=>{S[k]=!S[k];sv();map?apply():$('#s_'+k).classList.toggle('on',S[k])});
+['labels','roads','tilt'].forEach(k=>$('#s_'+k).classList.toggle('on',S[k]));$('#s_type').value=S.type;$('#s_units').value=S.units;$('#s_lang').value=S.lang;
+function ustat(){$('#ust').textContent=S.updated?'Last refreshed '+new Date(S.updated).toLocaleString():'Never refreshed'}ustat();
+function update(){if(!navigator.onLine)return toast('Offline: map updates need a connection');if(!map)return toast('Map not loaded');
+ $('#ust').textContent='Checking for updates…';const t=S.type;map.setMapTypeId(t=='roadmap'?'terrain':'roadmap');
+ google.maps.event.addListenerOnce(map,'tilesloaded',()=>{apply();S.updated=Date.now();sv();ustat();$('#ust').textContent+=' · Latest Google data loaded. Google doesn\'t publish imagery dates via the API, so ORBISTRA can\'t say whether new photos exist.';toast('Map data refreshed from Google')});
+ setTimeout(()=>{if($('#ust').textContent.startsWith('Checking')){apply();ustat();toast('Update timed out')}},9000)}
+$('#up').onclick=update;$('#ub').onclick=update;
+$('#ob').onclick=()=>toast('Google tiles and imagery cannot legally be stored offline. Saved places & settings work offline; licensed offline regions (OpenStreetMap/PMTiles) are the planned alternative.',7000);
+$('#pb').onclick=()=>{if(confirm('Delete saved places, settings and API key from this device?')){localStorage.clear();location.reload()}};
+
+// ---- search
+$('#q').oninput=e=>$('#clr').hidden=!e.target.value;$('#clr').onclick=()=>{$('#q').value='';$('#clr').hidden=true};
+$('#sf').onsubmit=e=>{e.preventDefault();const v=$('#q').value.trim();if(!v)return;if(!map)return toast(navigator.onLine?'Map not loaded yet':'Search needs a connection');
+ const m=v.match(/^(-?\d+(?:\.\d+)?)\s*[,;\s]\s*(-?\d+(?:\.\d+)?)$/);
+ if(m&&Math.abs(m[1])<=90&&Math.abs(m[2])<=180){const l=new google.maps.LatLng(+m[1],+m[2]);map.panTo(l);map.setZoom(15);return pick(l,'Coordinates')}
+ geo.geocode({address:v},(r,s)=>{if(s!='OK'||!r[0])return toast(s=='ZERO_RESULTS'?'No results found':'Search error: '+s);const x=r[0];x.geometry.viewport?map.fitBounds(x.geometry.viewport):(map.setCenter(x.geometry.location),map.setZoom(14));pick(x.geometry.location,x.formatted_address.split(',')[0],x.formatted_address)});document.activeElement.blur()};
+
+// ---- place info, save, share, directions, measure
+function pick(l,t,a){sel={l,t};mk?(mk.setPosition(l),mk.setMap(map)):mk=new google.maps.Marker({map,position:l,animation:google.maps.Animation.DROP});
+ $('#it').textContent=t||'Dropped pin';$('#ia').textContent=a||'';$('#ic').textContent=cs(l);$('#ir').textContent='';$('#info').classList.add('open');$('#sp').classList.remove('open');$('#lp').classList.remove('open');
+ if(!a)geo.geocode({location:l},(r,s)=>{if(s=='OK'&&r[0]){$('#ia').textContent=r[0].formatted_address;sel.t=$('#it').textContent=t||r[0].formatted_address.split(',')[0]}})}
+$('#isv').onclick=()=>{if(!sel)return;places.push({n:$('#it').textContent,a:$('#ia').textContent,lat:sel.l.lat(),lng:sel.l.lng()});localStorage.setItem('orb.p',JSON.stringify(places));rl();toast('Saved to favorites')};
+$('#ish').onclick=async()=>{if(!sel)return;const u=location.origin+location.pathname+`#${sel.l.lat().toFixed(5)},${sel.l.lng().toFixed(5)},${Math.round(map.getZoom())}`;try{navigator.share?await navigator.share({title:'ORBISTRA',url:u}):(await navigator.clipboard.writeText(u),toast('Link copied'))}catch{}};
+$('#idr').onclick=()=>{if(!sel)return;locate(o=>{new google.maps.DirectionsService().route({origin:o,destination:sel.l,travelMode:'DRIVING'},(r,s)=>{if(s!='OK')return toast('No route found ('+s+'). Enable Directions API.');dirR||(dirR=new google.maps.DirectionsRenderer({map,suppressMarkers:false}));dirR.setMap(map);dirR.setDirections(r);const l=r.routes[0].legs[0];$('#ir').textContent=`🚗 ${l.distance.text} · ${l.duration.text}`})})};
+$('#ms').onclick=()=>{if(!map)return;meas=!meas;$('#ms').classList.toggle('on',meas);if(meas){mpts=[];toast('Tap the map to add points. Tap the ruler again to clear.')}else{mline&&mline.setMap(null);mlab&&mlab.setMap(null);mline=null;mpts=[]}};
+function measure(l){mpts.push(l);mline?mline.setPath(mpts):mline=new google.maps.Polyline({map,path:mpts,strokeColor:'#5ee7ff',strokeWeight:4});
+ const d=google.maps.geometry.spherical.computeLength(mpts);new google.maps.Marker({map:null});toast('Distance: '+fd(d),6000)}
+function rl(){$('#sl').innerHTML=places.length?'':'<p style="color:var(--m)">No saved places yet.</p>';places.forEach((p,i)=>{const d=document.createElement('div');d.className='sv';d.innerHTML=`<div><b></b><small style="display:block;color:var(--m)"></small></div><div><button class="btn g">Go</button> <button class="btn d">✕</button></div>`;d.querySelector('b').textContent=p.n;d.querySelector('small').textContent=p.lat.toFixed(4)+', '+p.lng.toFixed(4);
+ d.querySelector('.g').onclick=()=>{if(!map)return toast('Map is offline');map.panTo(p);map.setZoom(15);pick(new google.maps.LatLng(p.lat,p.lng),p.n,p.a)};d.querySelector('.d').onclick=()=>{places.splice(i,1);localStorage.setItem('orb.p',JSON.stringify(places));rl()};$('#sl').appendChild(d)})}rl();
+</script></body></html>
