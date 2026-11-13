@@ -1,5 +1,5 @@
-// App-shell cache only. Google map tiles/imagery are never cached (Google Maps Platform terms).
-const C='orbistra-v1',A=['./','index.html','manifest.webmanifest','icon.svg'];
+// Caches only SMH's own files (the app shell). Map tiles are never stored: provider licences forbid bulk caching.
+const C='smh-v1',A=['./','index.html','styles.css','app.js','config.js','manifest.webmanifest','icon.svg'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(C).then(c=>c.addAll(A)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==C).map(x=>caches.delete(x)))).then(()=>self.clients.claim())));
 self.addEventListener('fetch',e=>{const u=new URL(e.request.url);if(u.origin!==location.origin||e.request.method!=='GET')return;
